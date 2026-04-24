@@ -3,10 +3,8 @@ name: Auto Register opendoor.cn
 on:
   workflow_dispatch:
   schedule:
-    # 每 10 分钟运行一次
     - cron: '*/10 * * * *'
 
-# 防止上一次任务没结束，下一次又同时运行
 concurrency:
   group: auto-register-opendoor
   cancel-in-progress: false
@@ -20,30 +18,24 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Setup Python 3.11
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Check system before install
         run: |
-          echo "===== System ====="
           uname -a
-
-          echo "===== Python ====="
           python --version
           which python
-
-          echo "===== Existing Chrome ====="
           google-chrome --version || true
           chromium-browser --version || true
 
       - name: Install Chrome
         run: |
           sudo apt-get update
-
           sudo apt-get install -y wget gnupg ca-certificates
 
           wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | \
@@ -75,7 +67,6 @@ jobs:
 
       - name: Check Chrome after install
         run: |
-          echo "===== Chrome Version ====="
           google-chrome --version
           which google-chrome
 
@@ -86,13 +77,8 @@ jobs:
 
       - name: Clear undetected-chromedriver cache
         run: |
-          echo "清理 undetected_chromedriver 缓存..."
           rm -rf ~/.local/share/undetected_chromedriver || true
           rm -rf ~/.cache/selenium || true
-
-          echo "检查缓存目录："
-          ls -la ~/.local/share || true
-          ls -la ~/.cache || true
 
       - name: Run register script with Xvfb
         timeout-minutes: 8
@@ -104,21 +90,14 @@ jobs:
       - name: Find debug files
         if: always()
         run: |
-          echo "===== 当前目录 ====="
           pwd
-
-          echo "===== 文件列表 ====="
           ls -la
-
-          echo "===== 查找 PNG 截图 ====="
           find . -name "*.png" -type f || true
-
-          echo "===== 查找日志文件 ====="
           find . \( -name "*.log" -o -name "*.txt" \) -type f || true
 
       - name: Upload debug screenshots
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: debug-screenshots
           path: "**/*.png"
@@ -126,7 +105,7 @@ jobs:
 
       - name: Upload debug logs
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: debug-logs
           path: |
