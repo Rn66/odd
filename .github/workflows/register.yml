@@ -1,124 +1,47 @@
 name: Auto Register opendoor.cn
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # 保留手动触发按钮
   schedule:
+    # 含义：每10分钟运行一次 (例如 12:00, 12:10, 12:20...)
     - cron: '*/10 * * * *'
 
-concurrency:
-  group: auto-register-opendoor
-  cancel-in-progress: false
 
 jobs:
   register:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - name: Setup Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: Check system before install
-        run: |
-          echo "===== System ====="
-          uname -a
-
-          echo "===== Python ====="
-          python --version
-          which python
-
-          echo "===== Existing Chrome ====="
-          google-chrome --version || true
-          chromium-browser --version || true
-
       - name: Install Chrome
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget gnupg ca-certificates
-
-          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | \
-            sudo gpg --dearmor -o /usr/share/keyrings/google-linux-signing-keyring.gpg
-
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux-signing-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | \
-            sudo tee /etc/apt/sources.list.d/google-chrome.list
-
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-      - name: Install Xvfb and required system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            xvfb \
-            fonts-liberation \
-            libnss3 \
-            libatk-bridge2.0-0 \
-            libatk1.0-0 \
-            libx11-xcb1 \
-            libxcomposite1 \
-            libxdamage1 \
-            libxrandr2 \
-            libgbm1 \
-            libasound2t64 \
-            libpangocairo-1.0-0 \
-            libgtk-3-0
-
-      - name: Check Chrome after install
-        run: |
-          echo "===== Chrome Version ====="
-          google-chrome --version
-          which google-chrome
+      - name: Install Xvfb
+        run: sudo apt-get install -y xvfb
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip setuptools
           python -m pip install requests selenium undetected-chromedriver
 
-      - name: Clear undetected-chromedriver cache
-        run: |
-          rm -rf ~/.local/share/undetected_chromedriver || true
-          rm -rf ~/.cache/selenium || true
-
       - name: Run register script with Xvfb
-        timeout-minutes: 8
         run: |
           xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python register.py 2>&1
         env:
           USE_XVFB: "true"
 
-      - name: Find debug files
-        if: always()
-        run: |
-          echo "===== 当前目录 ====="
-          pwd
-
-          echo "===== 文件列表 ====="
-          ls -la
-
-          echo "===== 查找 PNG 截图 ====="
-          find . -name "*.png" -type f || true
-
-          echo "===== 查找日志文件 ====="
-          find . \( -name "*.log" -o -name "*.txt" \) -type f || true
-
-      - name: Upload debug screenshots
+      - name: Upload debug screenshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: debug-screenshots
-          path: "**/*.png"
-          if-no-files-found: ignore
-
-      - name: Upload debug logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-logs
-          path: |
-            **/*.log
-            **/*.txt
-          if-no-files-found: ignore
+          name: debug-screenshot
+          path: "*.png"
