@@ -1,5 +1,4 @@
-name: Auto Register opendoor.cn
-
+name: Auto Register odd
 on:
   workflow_dispatch:
   schedule:
